@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Gesture Presenter — Kontrol Tangan</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: #080c18;
+            min-height: 100vh;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse 80% 60% at 10% 20%, rgba(0, 229, 160, 0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 90% 80%, rgba(124, 109, 250, 0.08) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        header {
+            text-align: center;
+            padding: 32px 24px 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        header h1 {
+            font-size: clamp(1.4rem, 3vw, 2rem);
+            font-weight: 700;
+            background: linear-gradient(90deg, #00e5a0, #7c6dfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .layout {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 0 20px 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .camera-panel {
+            flex: 1.1;
+            min-width: 300px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            padding: 20px;
+            backdrop-filter: blur(4px);
+        }
+
+        .video-shell {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            background: #000;
+            aspect-ratio: 4/3;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        video,
+        canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        video {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        canvas {
+            background: #0a0d1a;
+            border-radius: 20px;
+        }
+
+        .cam-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: rgba(8, 12, 24, 0.85);
+            border-radius: 20px;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .cam-overlay.hidden {
+            opacity: 0;
+        }
+
+        .cam-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 11px 20px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: 0.18s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-start {
+            background: #00e5a0;
+            color: #080c18;
+        }
+
+        .btn-start:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-stop {
+            background: rgba(255, 255, 255, 0.07);
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .btn-stop:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .feedback-bar {
+            margin-top: 14px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feedback-bar .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #64748b;
+        }
+
+        .feedback-bar.green .dot {
+            background: #00e5a0;
+            box-shadow: 0 0 8px #00e5a0;
+        }
+
+        .feedback-bar.orange .dot {
+            background: #f97316;
+            box-shadow: 0 0 8px #f97316;
+        }
+
+        .legend {
+            margin-top: 14px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .legend-item {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+
+        .legend-item .icon {
+            font-size: 1.4rem;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .slides-panel {
+            flex: 2;
+            min-width: 340px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(4px);
+        }
+
+        .upload-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .upload-label {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 9px 16px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            color: #94a3b8;
+        }
+
+        .upload-label:hover {
+            border-color: #7c6dfa;
+            color: #7c6dfa;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .reset-btn,
+        .fullscreen-btn {
+            background: rgba(249, 115, 22, 0.2);
+            border: 1px solid #f97316;
+            color: #f97316;
+            padding: 9px 16px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .fullscreen-btn {
+            background: rgba(0, 229, 160, 0.2);
+            border-color: #00e5a0;
+            color: #00e5a0;
+        }
+
+        /* ======= SLIDE VIEWPORT ======= */
+        .slide-viewport {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+            min-height: 380px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ======= FULLSCREEN: paksa penuh tanpa celah ======= */
+        .slide-viewport:-webkit-full-screen {
+            width: 100vw !important;
+            height: 100vh !important;
+            background: #000 !important;
+            border-radius: 0 !important;
+            border: none !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .slide-viewport:fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            background: #000 !important;
+            border-radius: 0 !important;
+            border: none !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .slide-viewport:-webkit-full-screen #slideContainer,
+        .slide-viewport:fullscreen #slideContainer {
+            width: 100vw !important;
+            height: 100vh !important;
+        }
+
+        .slide-viewport:-webkit-full-screen .slide,
+        .slide-viewport:fullscreen .slide {
+            width: 100vw !important;
+            height: 100vh !important;
+            background: #000 !important;
+            display: none;
+        }
+
+        .slide-viewport:-webkit-full-screen .slide.active,
+        .slide-viewport:fullscreen .slide.active {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* KUNCI: fill = gambar memenuhi seluruh layar tanpa celah */
+        .slide-viewport:-webkit-full-screen .slide img,
+        .slide-viewport:-webkit-full-screen .slide canvas,
+        .slide-viewport:fullscreen .slide img,
+        .slide-viewport:fullscreen .slide canvas {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: 100vw !important;
+            max-height: 100vh !important;
+            object-fit: fill !important;
+            border-radius: 0 !important;
+        }
+
+        .slide-viewport:-webkit-full-screen .slide-content,
+        .slide-viewport:fullscreen .slide-content {
+            max-width: 85vw !important;
+            max-height: 85vh !important;
+        }
+
+        .slide-viewport:-webkit-full-screen .slide-content h1,
+        .slide-viewport:fullscreen .slide-content h1 {
+            font-size: 3rem !important;
+        }
+
+        .slide-viewport:-webkit-full-screen .slide-content p,
+        .slide-viewport:-webkit-full-screen .slide-content li,
+        .slide-viewport:fullscreen .slide-content p,
+        .slide-viewport:fullscreen .slide-content li {
+            font-size: 1.5rem !important;
+        }
+
+        .slide-viewport:-webkit-full-screen .slide-pip,
+        .slide-viewport:fullscreen .slide-pip {
+            position: fixed !important;
+            top: 16px !important;
+            right: 20px !important;
+            z-index: 99999 !important;
+        }
+
+        .slide-viewport:-webkit-full-screen .gesture-flash,
+        .slide-viewport:fullscreen .gesture-flash {
+            border-radius: 0 !important;
+        }
+
+        /* ====================================== */
+
+        .slide {
+            display: none;
+            width: 100%;
+            height: 100%;
+            align-items: center;
+            justify-content: center;
+            animation: slideIn 0.25s ease;
+        }
+
+        .slide.active {
+            display: flex;
+        }
+
+        .slide img,
+        .slide canvas {
+            max-width: 100%;
+            max-height: 100%;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 16px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .slide-content {
+            max-width: 90%;
+            max-height: 90%;
+            overflow: auto;
+            padding: 20px;
+            text-align: left;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 20px;
+        }
+
+        .slide-content h1 {
+            font-size: 1.8rem;
+            margin-bottom: 16px;
+        }
+
+        .slide-content p,
+        .slide-content li {
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(18px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .slide-pip {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            font-family: monospace;
+            font-size: 0.7rem;
+            background: #080c18;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            z-index: 10;
+        }
+
+        .gesture-flash {
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.1s;
+            z-index: 5;
+        }
+
+        .gesture-flash.next {
+            background: rgba(0, 229, 160, 0.08);
+        }
+
+        .gesture-flash.prev {
+            background: rgba(249, 115, 22, 0.08);
+        }
+
+        .gesture-flash.show {
+            opacity: 1;
+        }
+
+        .slide-nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .btn-nav {
+            background: rgba(255, 255, 255, 0.07);
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 10px 22px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .progress-dots {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .dot-item {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+        }
+
+        .dot-item.active {
+            background: #7c6dfa;
+            transform: scale(1.4);
+        }
+
+        .camera-overlay {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 280px;
+            height: 210px;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+            z-index: 99999;
+            cursor: move;
+            border: 2px solid #00e5a0;
+            display: none;
+        }
+
+        .camera-overlay video,
+        .camera-overlay canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-overlay video {
+            opacity: 0;
+        }
+
+        .overlay-controls {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            display: flex;
+            gap: 6px;
+            z-index: 100001;
+        }
+
+        .overlay-controls button {
+            background: rgba(0, 0, 0, 0.6);
+            border: none;
+            color: white;
+            font-size: 12px;
+            width: 24px;
+            height: 24px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+
+        .resize-handle {
+            position: absolute;
+            bottom: 6px;
+            right: 6px;
+            width: 16px;
+            height: 16px;
+            background: #00e5a0;
+            border-radius: 2px;
+            cursor: nw-resize;
+            z-index: 100002;
+        }
+
+        @media (max-width: 740px) {
+            .layout {
+                flex-direction: column;
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248257/drawing_utils.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    </script>
+</head>
+
+<body>
+    <header>
+        <h1>Gesture Presenter</h1>
+    </header>
+    <div class="layout">
+        <div class="camera-panel">
+            <div class="video-shell">
+                <video id="webcam" autoplay playsinline muted></video>
+                <canvas id="outputCanvas"></canvas>
+                <div class="cam-overlay" id="camOverlay">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M23 7l-7 5 7 5V7z" />
+                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                    </svg>
+                    <span>Kamera belum aktif</span>
+                </div>
+            </div>
+            <div class="cam-controls">
+                <button class="btn btn-start" id="startBtn">Mulai Kamera</button>
+                <button class="btn btn-stop" id="stopBtn" disabled>Hentikan</button>
+            </div>
+            <div class="feedback-bar" id="feedbackBar">
+                <div class="dot"></div><span id="feedbackText">Klik "Mulai Kamera"</span>
+            </div>
+            <div class="legend">
+                <div class="legend-item"><span class="icon">🖐️</span>
+                    <div>Telapak Terbuka</div>
+                    <div>Slide berikutnya</div>
+                </div>
+                <div class="legend-item"><span class="icon">✊</span>
+                    <div>Kepalan Tangan</div>
+                    <div>Slide sebelumnya</div>
+                </div>
+            </div>
+        </div>
+        <div class="slides-panel">
+            <div class="upload-row">
+                <label class="upload-label" for="fileInput">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    Upload (PDF/PNG/JPG)
+                </label>
+                <input type="file" id="fileInput" multiple accept=".pdf,image/*">
+                <button class="reset-btn" id="resetBtn">Reset</button>
+                <button class="fullscreen-btn" id="fullscreenBtn">⛶ Fullscreen</button>
+                <span id="uploadHint" style="font-size:0.75rem;color:#64748b;"></span>
+            </div>
+            <div class="slide-viewport" id="slideViewport">
+                <div id="slideContainer">
+                    <div class="slide active">
+                        <div class="slide-content">
+                            <h1>Gesture Presenter</h1>
+                            <p>Kontrol slide dengan tangan tanpa sentuhan.</p>
+                            <ul>
+                                <li>🖐️ Telapak terbuka → berikutnya</li>
+                                <li>✊ Kepalan → sebelumnya</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="slide">
+                        <div class="slide-content">
+                            <h1>Mengapa Proyek Ini Penting?</h1>
+                            <ul>
+                                <li>Interaksi tanpa sentuhan</li>
+                                <li>MediaPipe Hands</li>
+                                <li>Aksesibilitas</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="slide">
+                        <div class="slide-content">
+                            <h1>Teknologi yang Digunakan</h1>
+                            <ul>
+                                <li>MediaPipe Hands</li>
+                                <li>JavaScript + Canvas</li>
+                                <li>HTML5/CSS3</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="slide">
+                        <div class="slide-content">
+                            <h1>Demo & Penutup</h1>
+                            <p>Terima kasih! ✊ mundur | 🖐️ maju</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-pip" id="slidePip">1 / 4</div>
+                <div class="gesture-flash" id="gestureFlash"></div>
+            </div>
+            <div class="slide-nav">
+                <button class="btn-nav" id="prevBtn">◀ Sebelumnya</button>
+                <div class="progress-dots" id="progressDots"></div>
+                <button class="btn-nav" id="nextBtn">Berikutnya ▶</button>
+            </div>
+        </div>
+    </div>
+    <div id="cameraOverlay" class="camera-overlay">
+        <video id="overlayVideo" autoplay playsinline muted></video>
+        <canvas id="overlayCanvas"></canvas>
+        <div class="overlay-controls"><button id="closeOverlayBtn">✕</button><button id="resetPosBtn">↺</button></div>
+        <div class="resize-handle" id="resizeHandle"></div>
+    </div>
+    <script>
+        (function () {
+            const video = document.getElementById('webcam');
+            const canvas = document.getElementById('outputCanvas');
+            const ctx = canvas.getContext('2d');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const feedbackText = document.getElementById('feedbackText');
+            const feedbackBar = document.getElementById('feedbackBar');
+            const camOverlayDiv = document.getElementById('camOverlay');
+            const slideContainer = document.getElementById('slideContainer');
+            const slidePip = document.getElementById('slidePip');
+            const gestureFlash = document.getElementById('gestureFlash');
+            const progressDots = document.getElementById('progressDots');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const fileInput = document.getElementById('fileInput');
+            const uploadHint = document.getElementById('uploadHint');
+            const resetBtn = document.getElementById('resetBtn');
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            const slideViewport = document.getElementById('slideViewport');
+            const cameraOverlay = document.getElementById('cameraOverlay');
+            const overlayVideo = document.getElementById('overlayVideo');
+            const overlayCanvas = document.getElementById('overlayCanvas');
+            const overlayCtx = overlayCanvas.getContext('2d');
+            const closeOverlayBtn = document.getElementById('closeOverlayBtn');
+            const resetPosBtn = document.getElementById('resetPosBtn');
+            const resizeHandle = document.getElementById('resizeHandle');
+
+            let slides = [];
+            let currentSlide = 0;
+            let cameraActive = false;
+            let mediaStream = null;
+            let handsModel = null;
+            let animFrame = null;
+            let lastGestureTime = 0;
+            const COOLDOWN = 750;
+
+            function getSlides() { return Array.from(slideContainer.querySelectorAll('.slide')); }
+            function buildDots() {
+                slides = getSlides();
+                progressDots.innerHTML = '';
+                slides.forEach((_, i) => {
+                    const dot = document.createElement('div');
+                    dot.className = 'dot-item' + (i === currentSlide ? ' active' : '');
+                    dot.addEventListener('click', () => goTo(i));
+                    progressDots.appendChild(dot);
+                });
+            }
+            function updateUI() {
+                slides = getSlides();
+                slides.forEach((s, i) => s.classList.toggle('active', i === currentSlide));
+                slidePip.textContent = `${currentSlide + 1} / ${slides.length}`;
+                document.querySelectorAll('.dot-item').forEach((d, i) => d.classList.toggle('active', i === currentSlide));
+            }
+            function goTo(idx) {
+                slides = getSlides();
+                if (idx < 0) idx = 0;
+                if (idx >= slides.length) idx = slides.length - 1;
+                currentSlide = idx;
+                updateUI();
+            }
+            function nextSlide() { goTo(currentSlide + 1); }
+            function prevSlide() { goTo(currentSlide - 1); }
+            function flashGesture(dir) {
+                gestureFlash.className = `gesture-flash ${dir} show`;
+                setTimeout(() => gestureFlash.className = `gesture-flash ${dir}`, 300);
+            }
+
+            function resetToDefault() {
+                while (slideContainer.firstChild) slideContainer.removeChild(slideContainer.firstChild);
+                const defaultContents = [
+                    '<div class="slide"><div class="slide-content"><h1>Gesture Presenter</h1><p>Kontrol slide dengan tangan tanpa sentuhan.</p><ul><li>🖐️ Telapak terbuka → berikutnya</li><li>✊ Kepalan → sebelumnya</li></ul></div></div>',
+                    '<div class="slide"><div class="slide-content"><h1>Mengapa Proyek Ini Penting?</h1><ul><li>Interaksi tanpa sentuhan</li><li>MediaPipe Hands</li><li>Aksesibilitas</li></ul></div></div>',
+                    '<div class="slide"><div class="slide-content"><h1>Teknologi yang Digunakan</h1><ul><li>MediaPipe Hands</li><li>JavaScript + Canvas</li><li>HTML5/CSS3</li></ul></div></div>',
+                    '<div class="slide"><div class="slide-content"><h1>Demo & Penutup</h1><p>Terima kasih! ✊ mundur | 🖐️ maju</p></div></div>'
+                ];
+                defaultContents.forEach(html => {
+                    const div = document.createElement('div');
+                    div.innerHTML = html;
+                    slideContainer.appendChild(div.firstElementChild);
+                });
+                currentSlide = 0;
+                buildDots();
+                updateUI();
+                uploadHint.textContent = 'Slide bawaan dimuat.';
+            }
+
+            async function renderPDFPages(file) {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const pages = [];
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const viewport = page.getViewport({ scale: 2.0 });
+                    const canvasElem = document.createElement('canvas');
+                    const context = canvasElem.getContext('2d');
+                    canvasElem.width = viewport.width;
+                    canvasElem.height = viewport.height;
+                    await page.render({ canvasContext: context, viewport: viewport }).promise;
+                    const slideDiv = document.createElement('div');
+                    slideDiv.className = 'slide';
+                    canvasElem.style.maxWidth = '100%';
+                    canvasElem.style.maxHeight = '100%';
+                    canvasElem.style.width = '100%';
+                    canvasElem.style.height = '100%';
+                    canvasElem.style.objectFit = 'contain';
+                    slideDiv.appendChild(canvasElem);
+                    pages.push(slideDiv);
+                }
+                return pages;
+            }
+
+            fileInput.addEventListener('change', async function (e) {
+                const files = Array.from(e.target.files);
+                if (files.length === 0) return;
+                uploadHint.textContent = 'Memproses file...';
+                while (slideContainer.firstChild) slideContainer.removeChild(slideContainer.firstChild);
+                for (const file of files) {
+                    if (file.type === 'application/pdf') {
+                        const pages = await renderPDFPages(file);
+                        pages.forEach(page => slideContainer.appendChild(page));
+                    } else if (file.type.startsWith('image/')) {
+                        const url = URL.createObjectURL(file);
+                        const slideDiv = document.createElement('div');
+                        slideDiv.className = 'slide';
+                        const img = document.createElement('img');
+                        img.src = url;
+                        img.style.width = '100%';
+                        img.style.height = '100%';
+                        img.style.objectFit = 'contain';
+                        slideDiv.appendChild(img);
+                        slideContainer.appendChild(slideDiv);
+                    } else {
+                        const slideDiv = document.createElement('div');
+                        slideDiv.className = 'slide';
+                        slideDiv.innerHTML = `<div class="slide-content"><p>File tidak didukung: ${file.name}</p></div>`;
+                        slideContainer.appendChild(slideDiv);
+                    }
+                }
+                currentSlide = 0;
+                buildDots();
+                updateUI();
+                uploadHint.textContent = `${files.length} file diproses.`;
+            });
+
+            resetBtn.addEventListener('click', resetToDefault);
+
+            function setFeedback(text, state) {
+                feedbackText.textContent = text;
+                feedbackBar.className = 'feedback-bar ' + (state || '');
+            }
+            function classifyGesture(landmarks) {
+                const tips = [4, 8, 12, 16, 20];
+                const pips = [2, 6, 10, 14, 18];
+                const isLeft = landmarks[0].x > landmarks[5].x;
+                let upCount = 0;
+                for (let i = 0; i < tips.length; i++) {
+                    const tip = landmarks[tips[i]];
+                    const pip = landmarks[pips[i]];
+                    const up = (i === 0) ? (isLeft ? tip.x < pip.x : tip.x > pip.x) : tip.y < pip.y;
+                    if (up) upCount++;
+                }
+                if (upCount === 5) return 'OPEN_PALM';
+                if (upCount === 0) return 'FIST';
+                return 'UNKNOWN';
+            }
+            function onResults(results) {
+                if (canvas.width !== video.videoWidth && video.videoWidth) {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                }
+                ctx.save();
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+                ctx.restore();
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    const lm = results.multiHandLandmarks[0];
+                    ctx.save();
+                    ctx.translate(canvas.width, 0);
+                    ctx.scale(-1, 1);
+                    if (typeof drawConnectors === 'function') drawConnectors(ctx, lm, HAND_CONNECTIONS, { color: '#00e5a0', lineWidth: 2 });
+                    if (typeof drawLandmarks === 'function') drawLandmarks(ctx, lm, { color: '#facc15', radius: 3 });
+                    ctx.restore();
+                    const gesture = classifyGesture(lm);
+                    if (gesture === 'OPEN_PALM') setFeedback('Telapak terbuka → berikutnya', 'green');
+                    else if (gesture === 'FIST') setFeedback('Kepalan → sebelumnya', 'orange');
+                    else setFeedback('Gestur tidak dikenali (telapak penuh/kepalan)', 'purple');
+                    const now = Date.now();
+                    if (now - lastGestureTime > COOLDOWN) {
+                        if (gesture === 'OPEN_PALM') { nextSlide(); flashGesture('next'); lastGestureTime = now; }
+                        else if (gesture === 'FIST') { prevSlide(); flashGesture('prev'); lastGestureTime = now; }
+                    }
+                } else {
+                    setFeedback('Tidak ada tangan terdeteksi', '');
+                }
+            }
+            function onResultsOverlay(results) {
+                if (cameraOverlay.style.display !== 'block') return;
+                if (overlayCanvas.width !== cameraOverlay.offsetWidth) {
+                    overlayCanvas.width = cameraOverlay.offsetWidth;
+                    overlayCanvas.height = cameraOverlay.offsetHeight;
+                }
+                overlayCtx.save();
+                overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                overlayCtx.translate(overlayCanvas.width, 0);
+                overlayCtx.scale(-1, 1);
+                overlayCtx.drawImage(results.image, 0, 0, overlayCanvas.width, overlayCanvas.height);
+                overlayCtx.restore();
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    const lm = results.multiHandLandmarks[0];
+                    overlayCtx.save();
+                    overlayCtx.translate(overlayCanvas.width, 0);
+                    overlayCtx.scale(-1, 1);
+                    if (typeof drawConnectors === 'function') drawConnectors(overlayCtx, lm, HAND_CONNECTIONS, { color: '#00e5a0', lineWidth: 2 });
+                    if (typeof drawLandmarks === 'function') drawLandmarks(overlayCtx, lm, { color: '#facc15', radius: 3 });
+                    overlayCtx.restore();
+                }
+            }
+            async function startCamera() {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    setFeedback('getUserMedia tidak didukung. Buka via localhost/HTTPS.', '');
+                    return;
+                }
+                startBtn.disabled = true;
+                setFeedback('Meminta akses kamera...', '');
+                try {
+                    mediaStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' } });
+                } catch (err) {
+                    startBtn.disabled = false;
+                    if (err.name === 'NotAllowedError') setFeedback('Akses ditolak. Izinkan kamera.', '');
+                    else if (err.name === 'NotFoundError') setFeedback('Kamera tidak ditemukan.', '');
+                    else setFeedback('Error: ' + err.message, '');
+                    return;
+                }
+                video.srcObject = mediaStream;
+                overlayVideo.srcObject = mediaStream;
+                await video.play();
+                await overlayVideo.play();
+                cameraActive = true;
+                stopBtn.disabled = false;
+                camOverlayDiv.classList.add('hidden');
+                setFeedback('Memuat model MediaPipe...', '');
+                handsModel = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}` });
+                handsModel.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
+                handsModel.onResults((results) => {
+                    onResults(results);
+                    if (cameraOverlay.style.display === 'block') onResultsOverlay(results);
+                });
+                async function frameLoop() {
+                    if (!cameraActive) return;
+                    if (video.readyState >= 2 && handsModel) {
+                        try { await handsModel.send({ image: video }); } catch (e) { }
+                    }
+                    animFrame = requestAnimationFrame(frameLoop);
+                }
+                frameLoop();
+                setFeedback('Model siap — tunjukkan tangan Anda!', 'green');
+            }
+            function stopCamera() {
+                cameraActive = false;
+                if (animFrame) cancelAnimationFrame(animFrame);
+                if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+                video.srcObject = null;
+                overlayVideo.srcObject = null;
+                handsModel = null;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (overlayCtx) overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                camOverlayDiv.classList.remove('hidden');
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                setFeedback('Kamera dihentikan.', '');
+            }
+            startBtn.addEventListener('click', startCamera);
+            stopBtn.addEventListener('click', stopCamera);
+            prevBtn.addEventListener('click', prevSlide);
+            nextBtn.addEventListener('click', nextSlide);
+
+            // ===== FULLSCREEN LOGIC =====
+            function enterFullscreen() {
+                const elem = slideViewport;
+                const go = elem.requestFullscreen
+                    ? () => elem.requestFullscreen({ navigationUI: 'hide' })
+                    : elem.webkitRequestFullscreen
+                        ? () => elem.webkitRequestFullscreen()
+                        : null;
+                if (go) go().catch(() => { });
+
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch(() => { });
+                }
+
+                if (cameraActive) {
+                    cameraOverlay.style.display = 'block';
+                    cameraOverlay.style.width = '280px';
+                    cameraOverlay.style.height = '210px';
+                    cameraOverlay.style.bottom = '20px';
+                    cameraOverlay.style.right = '20px';
+                    cameraOverlay.style.top = 'auto';
+                    cameraOverlay.style.left = 'auto';
+                    overlayCanvas.width = 280;
+                    overlayCanvas.height = 210;
+                    if (mediaStream && overlayVideo.paused) overlayVideo.play().catch(() => { });
+                }
+
+                fullscreenBtn.textContent = '✕ Keluar Fullscreen';
+            }
+
+            function exitFullscreen() {
+                if (document.fullscreenElement || document.webkitFullscreenElement) {
+                    if (document.exitFullscreen) document.exitFullscreen();
+                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                }
+                cameraOverlay.style.display = 'none';
+                fullscreenBtn.textContent = '⛶ Fullscreen';
+            }
+
+            function exitFullscreenHandler() {
+                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                    cameraOverlay.style.display = 'none';
+                    fullscreenBtn.textContent = '⛶ Fullscreen';
+                }
+            }
+
+            document.addEventListener('fullscreenchange', exitFullscreenHandler);
+            document.addEventListener('webkitfullscreenchange', exitFullscreenHandler);
+
+            fullscreenBtn.addEventListener('click', () => {
+                if (document.fullscreenElement || document.webkitFullscreenElement) {
+                    exitFullscreen();
+                } else {
+                    enterFullscreen();
+                }
+            });
+
+            document.addEventListener('keydown', e => {
+                if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextSlide();
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') prevSlide();
+                if (e.key === 'f' || e.key === 'F') {
+                    if (document.fullscreenElement || document.webkitFullscreenElement) exitFullscreen();
+                    else enterFullscreen();
+                }
+            });
+            // ============================
+
+            closeOverlayBtn.addEventListener('click', () => cameraOverlay.style.display = 'none');
+            resetPosBtn.addEventListener('click', () => {
+                cameraOverlay.style.width = '280px';
+                cameraOverlay.style.height = '210px';
+                cameraOverlay.style.bottom = '20px';
+                cameraOverlay.style.right = '20px';
+                cameraOverlay.style.top = 'auto';
+                cameraOverlay.style.left = 'auto';
+                if (overlayCanvas) { overlayCanvas.width = 280; overlayCanvas.height = 210; }
+            });
+
+            let isDragging = false, dragOffsetX, dragOffsetY;
+            cameraOverlay.addEventListener('mousedown', (e) => {
+                if (e.target === resizeHandle || e.target.closest('.overlay-controls')) return;
+                isDragging = true;
+                dragOffsetX = e.clientX - cameraOverlay.offsetLeft;
+                dragOffsetY = e.clientY - cameraOverlay.offsetTop;
+                cameraOverlay.style.cursor = 'grabbing';
+                e.preventDefault();
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                let left = e.clientX - dragOffsetX;
+                let top = e.clientY - dragOffsetY;
+                left = Math.min(window.innerWidth - cameraOverlay.offsetWidth, Math.max(0, left));
+                top = Math.min(window.innerHeight - cameraOverlay.offsetHeight, Math.max(0, top));
+                cameraOverlay.style.left = left + 'px';
+                cameraOverlay.style.top = top + 'px';
+                cameraOverlay.style.right = 'auto';
+                cameraOverlay.style.bottom = 'auto';
+            });
+            window.addEventListener('mouseup', () => { isDragging = false; cameraOverlay.style.cursor = 'move'; });
+
+            let isResizing = false, startW, startH, startX, startY;
+            resizeHandle.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                startW = cameraOverlay.offsetWidth;
+                startH = cameraOverlay.offsetHeight;
+                startX = e.clientX;
+                startY = e.clientY;
+                e.preventDefault();
+                e.stopPropagation();
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+                let newW = startW + (e.clientX - startX);
+                let newH = startH + (e.clientY - startY);
+                newW = Math.min(500, Math.max(120, newW));
+                newH = Math.min(375, Math.max(90, newH));
+                cameraOverlay.style.width = newW + 'px';
+                cameraOverlay.style.height = newH + 'px';
+                if (overlayCanvas) { overlayCanvas.width = newW; overlayCanvas.height = newH; }
+            });
+            window.addEventListener('mouseup', () => { isResizing = false; });
+
+            resetToDefault();
+        })();
+    </script>
+</body>
+
+</html>
