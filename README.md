@@ -10,43 +10,43 @@ Aplikasi ini dibangun dengan pendekatan client-side murni sehingga tidak memerlu
 
 Fitur Utama
 
-Kontrol Slide Tanpa Sentuhan: Gunakan gerakan tangan sederhana untuk mengontrol navigasi slide. Telapak tangan terbuka untuk maju ke slide berikutnya. Kepalan tangan untuk mundur ke slide sebelumnya.
+1.Kontrol Slide Tanpa Sentuhan: Gunakan gerakan tangan sederhana untuk mengontrol navigasi slide. Telapak tangan terbuka untuk maju ke slide berikutnya. Kepalan tangan untuk mundur ke slide sebelumnya.
 
-Webcam Real-Time: Aplikasi langsung mengakses kamera perangkat dan menampilkan umpan balik visual sehingga pengguna dapat melihat posisi tangan mereka saat melakukan gerakan.
+2.Webcam Real-Time: Aplikasi langsung mengakses kamera perangkat dan menampilkan umpan balik visual sehingga pengguna dapat melihat posisi tangan mereka saat melakukan gerakan.
 
-Privasi Terjaga Penuh: Semua pemrosesan deteksi gerakan dilakukan langsung di browser menggunakan WebAssembly. Tidak ada satupun data video yang dikirim ke server eksternal.
+3.Privasi Terjaga Penuh: Semua pemrosesan deteksi gerakan dilakukan langsung di browser menggunakan WebAssembly. Tidak ada satupun data video yang dikirim ke server eksternal.
 
-Antarmuka Sederhana dan Intuitif: Dilengkapi dengan tombol Mulai Kamera untuk mengaktifkan deteksi dan navigasi slide bawaan yang sudah dimuat sehingga pengguna dapat langsung mencoba fitur tanpa persiapan slide sendiri.
+4.Antarmuka Sederhana dan Intuitif: Dilengkapi dengan tombol Mulai Kamera untuk mengaktifkan deteksi dan navigasi slide bawaan yang sudah dimuat sehingga pengguna dapat langsung mencoba fitur tanpa persiapan slide sendiri.
 
-Aksesibilitas Tinggi: Membantu penyandang disabilitas motorik atau kondisi yang mengharuskan presentasi tanpa menyentuh perangkat.
+5.Aksesibilitas Tinggi: Membantu penyandang disabilitas motorik atau kondisi yang mengharuskan presentasi tanpa menyentuh perangkat.
 
 Teknologi yang Digunakan
 
-MediaPipe Hands: Library Google untuk pendeteksian landmark tangan 21 titik secara real-time dengan akurasi tinggi
+-MediaPipe Hands: Library Google untuk pendeteksian landmark tangan 21 titik secara real-time dengan akurasi tinggi
 
-JavaScript (ES6+): Logika deteksi gerakan dan kontrol navigasi slide
+-JavaScript (ES6+): Logika deteksi gerakan dan kontrol navigasi slide
 
-HTML5 Canvas: Visualisasi umpan balik kamera dan overlay deteksi tangan
+-HTML5 Canvas: Visualisasi umpan balik kamera dan overlay deteksi tangan
 
-CSS3: Desain antarmuka pengguna yang responsif dan modern
+-CSS3: Desain antarmuka pengguna yang responsif dan modern
 
-GitHub Pages: Hosting dan deployment otomatis untuk akses publik
+-GitHub Pages: Hosting dan deployment otomatis untuk akses publik
 
 Cara Menjalankan Proyek Secara Lokal
 
 Jika Anda ingin menjalankan proyek ini di komputer sendiri, ikuti langkah-langkah berikut:
 
-Clone repositori ini:
+1.Clone repositori ini:
 git clone https://github.com/sams-13/gesture-presenter.git
 
-Masuk ke direktori proyek:
+2.Masuk ke direktori proyek:
 cd gesture-presenter
 
-Buka file index.html di browser favorit Anda. Disarankan menggunakan browser berbasis Chromium (Chrome, Edge, Brave) untuk kompatibilitas MediaPipe yang optimal.
+3.Buka file index.html di browser favorit Anda. Disarankan menggunakan browser berbasis Chromium (Chrome, Edge, Brave) untuk kompatibilitas MediaPipe yang optimal.
 
-Izinkan akses webcam ketika browser meminta izin.
+4.Izinkan akses webcam ketika browser meminta izin.
 
-Klik tombol Mulai Kamera dan coba lakukan gerakan telapak terbuka atau kepalan tangan di depan kamera.
+5.Klik tombol Mulai Kamera dan coba lakukan gerakan telapak terbuka atau kepalan tangan di depan kamera.
 
 Catatan: Proyek ini sepenuhnya bersifat statis dan tidak memerlukan server backend. Pastikan koneksi internet tersedia untuk mengunduh model MediaPipe dari CDN.
 
